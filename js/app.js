@@ -47,8 +47,6 @@
   /* ---------- GSAP setup ---------- */
   var smoother = null;
   var heroIntroStarted = false;
-  var accordionActivate = null;
-  var infoSwiperMobile = null;
 
   function startHeroIntro() {
     if (heroIntroStarted) return;
@@ -78,9 +76,9 @@
         smoother = ScrollSmoother.create({
           wrapper: "#smooth-wrapper",
           content: "#smooth-content",
-          smooth: 1.1,
-          effects: true,
-          normalizeScroll: true
+          smooth: 1,
+          normalizeScroll: true,
+          ignoreMobileResize: true
         });
       } catch (e) { smoother = null; }
     }
@@ -101,43 +99,115 @@
       });
     });
 
+    /* Hero stacking (reference initStackingEffect): hero pinned with
+       pinSpacing:false, the next section slides over it, hero lifts -20% */
+    var heroSec = document.querySelector(".hero-section");
+    var nextSec = document.querySelector(".text-blocks");
+    if (heroSec && nextSec) {
+      gsap.set(nextSec, { position: "relative", zIndex: 10 });
+      gsap.set(heroSec, { zIndex: 1 });
+      ScrollTrigger.create({
+        trigger: heroSec, start: "top top",
+        end: function () { return "+=" + nextSec.offsetHeight; },
+        pin: true, pinSpacing: false, scrub: true,
+        anticipatePin: 1, invalidateOnRefresh: true
+      });
+      gsap.to(heroSec, {
+        yPercent: -20, ease: "none",
+        scrollTrigger: { trigger: nextSec, start: "top bottom", end: "top top", scrub: true }
+      });
+    }
+
+    /* Text-blocks scene (reference): pin with scrub:false; the statement
+       swap is a direction-triggered timed timeline (0.4s power2.inOut out,
+       0.4s power2.out in at -=0.2); backgrounds parallax 0 -> -30 scrubbed */
+    var tbContainer = document.querySelector(".text-blocks");
+    var tbSplit1 = null, tbSplit2 = null;
+    if (tbContainer && window.SplitText) {
+      try {
+        var tbH1 = tbContainer.querySelector(".text-block--1 h2");
+        var tbH2 = tbContainer.querySelector(".text-block--2 h2");
+        tbSplit1 = new SplitText(tbH1, { type: "lines", linesClass: "tb-line" });
+        new SplitText(tbH1, { type: "lines", linesClass: "tb-mask" });
+        tbSplit2 = new SplitText(tbH2, { type: "lines", linesClass: "tb-line" });
+        new SplitText(tbH2, { type: "lines", linesClass: "tb-mask" });
+      } catch (e) { tbSplit1 = null; tbSplit2 = null; }
+    }
+    function initTextScene(endDist) {
+      if (!tbContainer) return;
+      var switchTl = gsap.timeline({ paused: true });
+      if (tbSplit1 && tbSplit2) {
+        switchTl.to(tbSplit1.lines, { yPercent: -100, opacity: 0, duration: 0.4, ease: "power2.inOut" }, 0)
+                .to(".text-block--1", { opacity: 0, duration: 0.4, ease: "power2.inOut" }, 0)
+                .fromTo(".text-block--2", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 0.2)
+                .fromTo(tbSplit2.lines, { yPercent: 100, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 0.4, ease: "power2.out" }, 0.2);
+      } else {
+        switchTl.to(".text-block--1", { opacity: 0, duration: 0.4, ease: "power2.inOut" }, 0)
+                .fromTo(".text-block--2", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 0.2);
+      }
+      ScrollTrigger.create({
+        trigger: tbContainer, start: "top top", end: "+=" + endDist,
+        pin: true, scrub: false, anticipatePin: 1,
+        onUpdate: function (self) {
+          if (self.direction === 1 && self.progress > 0.02) { switchTl.play(); }
+          else if (self.direction === -1 && self.progress < 0.98) { switchTl.reverse(); }
+        }
+      });
+      gsap.fromTo(".text-block_bg", { yPercent: 0 }, {
+        yPercent: -30, ease: "none",
+        scrollTrigger: {
+          trigger: tbContainer, start: "top bottom",
+          end: function () { return "bottom+=" + endDist + " top"; },
+          scrub: true, invalidateOnRefresh: true
+        }
+      });
+    }
+
     /* Pinned scenes (desktop) — scroll lengths measured from the reference:
        text-blocks +1800, video-block +2160, accordion +720, cta +2250 */
     var mm = gsap.matchMedia();
     mm.add("(min-width: 769px)", function () {
-      /* Text blocks: two statements crossfade over a pinned photo scene */
-      var ttl = gsap.timeline({
-        scrollTrigger: { trigger: ".text-blocks", start: "top top", end: "+=900", pin: true, scrub: 1 }
-      });
-      ttl.fromTo(".text-block--1 .text-block_bg", { yPercent: -12 }, { yPercent: 0, duration: 1, ease: "none" }, 0)
-         .fromTo(".text-block--2 .text-block_bg", { yPercent: -12 }, { yPercent: 0, duration: 1, ease: "none" }, 0)
-         .to(".text-block--1", { opacity: 0, duration: 0.22, ease: "power1.inOut" }, 0.52)
-         .fromTo(".text-block--2", { opacity: 0 }, { opacity: 1, duration: 0.22, ease: "power1.inOut" }, 0.52);
+      /* Text blocks: reference switch scene (pin distance = 100% of 900) */
+      initTextScene(900);
+
+      /* Heading line reveals (reference values, desktop only) */
+      if (window.SplitText) {
+        try {
+          document.querySelectorAll(".info-inner-left h2, .top-block h2, .table-head h2, .certificates h2").forEach(function (h) {
+            var sp = new SplitText(h, { type: "lines", linesClass: "h-line" });
+            new SplitText(h, { type: "lines", linesClass: "h-mask" });
+            gsap.set(sp.lines, { yPercent: 100, rotate: 10, opacity: 0, transformOrigin: "0% 50% -50" });
+            gsap.to(sp.lines, {
+              yPercent: 0, rotate: 0, opacity: 1, duration: 1.2, stagger: 0.15, ease: "power4.out",
+              scrollTrigger: { trigger: h, start: "top 98%", toggleActions: "play none none none" }
+            });
+          });
+        } catch (e) { /* headings stay static without the split */ }
+      }
 
       /* Info blocks: left column pinned while the collection stack scrolls */
       ScrollTrigger.create({
         trigger: ".info-blocks", start: "top top", end: "bottom bottom",
-        pin: ".info-inner-left", pinSpacing: false
+        pin: ".info-inner-left", pinSpacing: false,
+        anticipatePin: 1, invalidateOnRefresh: true
       });
 
       /* Video block: pinned film scene */
       ScrollTrigger.create({
-        trigger: ".video-block", start: "top top", end: "+=2160", pin: true
+        trigger: ".video-block", start: "top top", end: "+=2160", pin: true,
+        anticipatePin: 1
       });
 
-      /* Accordion: pinned, activation follows scroll progress */
+      /* Accordion: pinned hold only — activation is the 5s timer in
+         initAccordion (reference model), not scroll progress */
       ScrollTrigger.create({
         trigger: ".accordion-section", start: "top top", end: "+=720", pin: true,
-        onUpdate: function (self) {
-          if (accordionActivate) {
-            accordionActivate(Math.min(4, Math.floor(self.progress * 5)));
-          }
-        }
+        scrub: true, anticipatePin: 1
       });
 
       /* CTA: the two lines slide in from opposite sides while pinned */
       var ctl = gsap.timeline({
-        scrollTrigger: { trigger: ".cta-container", start: "top top", end: "+=2250", pin: true, scrub: 1 }
+        scrollTrigger: { trigger: ".cta-container", start: "top top", end: "+=2250", pin: true, scrub: 1, anticipatePin: 1 }
       });
       ctl.from(".cta-line--left", { x: -90, opacity: 0, duration: 0.35, ease: "power2.out" }, 0)
          .from(".cta-line--right", { x: 90, opacity: 0, duration: 0.35, ease: "power2.out" }, 0)
@@ -148,32 +218,39 @@
     /* Pinned scenes (mobile) — scroll lengths measured from the reference
        at 390px: text-blocks +844, video-block +2786, cta +1688 */
     mm.add("(max-width: 768px)", function () {
-      var mtl = gsap.timeline({
-        scrollTrigger: { trigger: ".text-blocks", start: "top top", end: "+=844", pin: true, scrub: 1 }
-      });
-      mtl.fromTo(".text-block--1 .text-block_bg", { yPercent: -12 }, { yPercent: 0, duration: 1, ease: "none" }, 0)
-         .fromTo(".text-block--2 .text-block_bg", { yPercent: -12 }, { yPercent: 0, duration: 1, ease: "none" }, 0)
-         .to(".text-block--1", { opacity: 0, duration: 0.22, ease: "power1.inOut" }, 0.52)
-         .fromTo(".text-block--2", { opacity: 0 }, { opacity: 1, duration: 0.22, ease: "power1.inOut" }, 0.52);
+      /* Text blocks: reference switch scene (pin distance = 100% of 844) */
+      initTextScene(844);
 
-      /* Info blocks: section pinned, vertical scroll drives the horizontal
-         swiper (reference mobile behaviour; pin distance measured) */
-      ScrollTrigger.create({
-        trigger: ".info-blocks", start: "top top", end: "+=2330", pin: true,
-        onUpdate: function (self) {
-          if (infoSwiperMobile) {
-            var idx = Math.min(6, Math.round(self.progress * 6));
-            if (infoSwiperMobile.activeIndex !== idx) infoSwiperMobile.slideTo(idx);
+      /* Info blocks (reference mobile model): section pinned, vertical
+         scroll drives the card row as ONE continuous scrubbed x-translate
+         (scrub 0.2) — no Swiper, no discrete slide jumps */
+      var infoSection = document.querySelector(".info-blocks");
+      var infoWrapper = infoSection ? infoSection.querySelector(".info-swiper .swiper-wrapper") : null;
+      var infoItems = infoSection ? infoSection.querySelectorAll(".info-card") : [];
+      if (infoSection && infoWrapper && infoItems.length > 1) {
+        var infoTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: infoSection, start: "top top", end: "+=2330", pin: true,
+            scrub: 0.2, anticipatePin: 1, invalidateOnRefresh: true,
+            onUpdate: function (self) {
+              var idx = Math.min(Math.floor(self.progress * infoItems.length), infoItems.length - 1);
+              setCollectionIndex(idx);
+            }
           }
-        }
-      });
+        });
+        infoTl.to(infoWrapper, {
+          x: function () { return -(infoWrapper.scrollWidth - infoWrapper.clientWidth); },
+          ease: "none", duration: 1
+        });
+      }
 
       ScrollTrigger.create({
-        trigger: ".video-block", start: "top top", end: "+=2786", pin: true
+        trigger: ".video-block", start: "top top", end: "+=2786", pin: true,
+        anticipatePin: 1
       });
 
       var mctl = gsap.timeline({
-        scrollTrigger: { trigger: ".cta-container", start: "top top", end: "+=1688", pin: true, scrub: 1 }
+        scrollTrigger: { trigger: ".cta-container", start: "top top", end: "+=1688", pin: true, scrub: 1, anticipatePin: 1 }
       });
       mctl.from(".cta-line--left", { x: -60, opacity: 0, duration: 0.35, ease: "power2.out" }, 0)
           .from(".cta-line--right", { x: 60, opacity: 0, duration: 0.35, ease: "power2.out" }, 0)
@@ -181,7 +258,9 @@
           .from(".cta-card", { y: 50, opacity: 0, duration: 0.3, ease: "power2.out" }, 0.35);
     });
 
-    /* Ken Burns film: two stills crossfading with a slow push-in */
+    /* Ken Burns film: two stills crossfading with a slow push-in.
+       Runs ONLY while the video block is on screen — an always-on infinite
+       scale loop on two full-bleed images is a permanent GPU tax on mobile */
     var kb1 = document.querySelector(".kb-1");
     var kb2 = document.querySelector(".kb-2");
     if (kb1 && kb2) {
@@ -190,6 +269,11 @@
         .to(kb2, { opacity: 1, duration: 1.6, ease: "power2.inOut" }, 6.2)
         .fromTo(kb2, { scale: 1.14 }, { scale: 1.02, duration: 7, ease: "none" }, 7)
         .to(kb2, { opacity: 0, duration: 1.6, ease: "power2.inOut" }, 13.2);
+      kb.pause();
+      ScrollTrigger.create({
+        trigger: ".video-block", start: "top bottom", end: "bottom top",
+        onToggle: function (self) { if (self.isActive) { kb.play(); } else { kb.pause(); } }
+      });
     }
   }
 
@@ -205,7 +289,8 @@
     if (!window.Swiper) return;
 
     /* Collections: desktop = scroll-driven stack (counter follows the card
-       passing centre); mobile = horizontal Swiper. */
+       passing centre); mobile = the scroll-scrubbed row built in initMotion
+       (reference model — no Swiper instance on mobile). */
     if (window.innerWidth >= 769) {
       if (window.gsap && window.ScrollTrigger) {
         document.querySelectorAll(".info-card").forEach(function (card, i) {
@@ -215,38 +300,111 @@
           });
         });
       }
-    } else {
-      infoSwiperMobile = new Swiper(".info-swiper", {
-        slidesPerView: 1.15,
-        spaceBetween: 16,
-        speed: 650,
-        grabCursor: true,
-        allowTouchMove: false,
-        on: {
-          slideChange: function () { setCollectionIndex(this.activeIndex); }
-        }
-      });
     }
 
+    /* Testimonials: reference Swiper values (speed 1000, slide, 24px gap,
+       loop on small screens only, 12s autoplay gated by visibility) */
     var testiSwiper = new Swiper(".testimonials-swiper", {
       slidesPerView: 1,
-      speed: 800,
-      effect: "fade",
-      fadeEffect: { crossFade: true },
-      loop: true,
-      autoHeight: true
+      speed: 1000,
+      spaceBetween: 24,
+      loop: false,
+      autoHeight: true,
+      autoplay: { delay: 12000, disableOnInteraction: false },
+      breakpoints: {
+        320: { loop: true },
+        1025: { loop: false }
+      }
     });
+    if (testiSwiper.autoplay) testiSwiper.autoplay.stop();
+    var testiSection = document.querySelector(".testimonials");
+    if (testiSection && "IntersectionObserver" in window) {
+      new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!testiSwiper.autoplay) return;
+          if (entry.isIntersecting) { testiSwiper.autoplay.start(); }
+          else { testiSwiper.autoplay.stop(); }
+        });
+      }, { threshold: 0.3 }).observe(testiSection);
+    }
     var nextBtn = document.getElementById("testimonialNext");
     if (nextBtn) nextBtn.addEventListener("click", function () { testiSwiper.slideNext(); });
   }
 
-  /* ---------- Accordion ---------- */
+  /* ---------- Accordion ----------
+     Reference model (global.js): a 5000ms timer auto-cycles the items,
+     paused while the section is off screen (IntersectionObserver 0.4),
+     click activates immediately and restarts the timer. The pinned
+     section is only a hold — scroll does NOT drive activation. */
   function initAccordion() {
+    var section = document.querySelector(".accordion-section");
     var items = document.querySelectorAll(".accordion-item");
     var images = document.querySelectorAll(".acc-img");
     if (!items.length) return;
 
+    var DURATION = 5000;
+    var current = 0;
+    var timer = null;
+    var startTime = 0;
+    var remaining = DURATION;
+    var isVisible = false;
+
+    function setProgress(idx, pct, animateMs) {
+      var bar = items[idx] ? items[idx].querySelector(".acc-progress") : null;
+      if (!bar) return;
+      if (animateMs) {
+        bar.style.transition = "width " + animateMs + "ms linear";
+        bar.style.width = "100%";
+      } else {
+        bar.style.transition = "none";
+        bar.style.width = pct + "%";
+      }
+    }
+
+    function startProgress(dur) {
+      setProgress(current, 0, 0);
+      /* force reflow so the linear transition restarts cleanly */
+      var bar = items[current].querySelector(".acc-progress");
+      if (bar) { void bar.offsetWidth; }
+      setProgress(current, 100, dur);
+      startTime = Date.now();
+      remaining = dur;
+      timer = setTimeout(next, dur);
+    }
+
+    function pauseProgress() {
+      if (!timer) return;
+      clearTimeout(timer);
+      timer = null;
+      remaining -= (Date.now() - startTime);
+      var pct = Math.max(0, Math.min(100, ((DURATION - remaining) / DURATION) * 100));
+      setProgress(current, pct, 0);
+    }
+
+    function resumeProgress() {
+      if (timer) return;
+      if (remaining <= 0) { next(); return; }
+      /* continue the bar from its paused percentage */
+      var bar = items[current].querySelector(".acc-progress");
+      if (bar) {
+        var pct = Math.max(0, Math.min(100, ((DURATION - remaining) / DURATION) * 100));
+        bar.style.transition = "width " + remaining + "ms linear";
+        bar.style.width = pct + "%";
+        void bar.offsetWidth;
+        bar.style.width = "100%";
+      }
+      startTime = Date.now();
+      timer = setTimeout(next, remaining);
+      var keep = remaining;
+      remaining = keep;
+    }
+
     function activate(index) {
+      if (!items[index]) return;
+      clearTimeout(timer);
+      timer = null;
+
+      var prevImg = document.querySelector(".acc-img.is-active");
       items.forEach(function (item, i) {
         var body = item.querySelector(".accordion-body");
         if (i === index) {
@@ -260,11 +418,24 @@
             gsap.to(body, { height: 0, duration: 0.45, ease: "power3.out" });
           } else if (body) { body.style.height = "0px"; }
         }
+        setProgress(i, 0, 0);
       });
-      images.forEach(function (img, i) { img.classList.toggle("is-active", i === index); });
+      images.forEach(function (img, i) {
+        var makeActive = i === index;
+        if (!makeActive && img === prevImg && prevImg !== images[index]) {
+          img.classList.add("was-active");
+          setTimeout(function () { img.classList.remove("was-active"); }, 1400);
+        }
+        img.classList.toggle("is-active", makeActive);
+      });
+
+      current = index;
+      remaining = DURATION;
+      if (isVisible) { startProgress(DURATION); }
     }
 
-    accordionActivate = activate;
+    function next() { activate((current + 1) % items.length); }
+
     items.forEach(function (item, i) {
       var head = item.querySelector(".accordion-head");
       if (head) head.addEventListener("click", function () { activate(i); });
@@ -273,6 +444,18 @@
     /* Set the first panel's height correctly after layout */
     var firstBody = items[0].querySelector(".accordion-body");
     if (firstBody) { firstBody.style.height = "auto"; }
+
+    if (section && "IntersectionObserver" in window) {
+      new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) { isVisible = true; resumeProgress(); }
+          else { isVisible = false; pauseProgress(); }
+        });
+      }, { threshold: 0.4 }).observe(section);
+    } else {
+      isVisible = true;
+      startProgress(DURATION);
+    }
   }
 
   /* ---------- Menu, anchors, misc ---------- */

@@ -379,9 +379,17 @@ html.loader-done .preloader { opacity: 0; visibility: hidden; pointer-events: no
 }
 .acc-img {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-  opacity: 0; transition: opacity var(--transition-slow);
+  clip-path: inset(100% 0% 0% 0%); transform: scale(1.1); z-index: 1;
+  transition: clip-path 1s cubic-bezier(0.4, 0, 0.2, 1), transform 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.acc-img.is-active { opacity: 1; }
+.acc-img.is-active { clip-path: inset(0% 0% 0% 0%); transform: scale(1); z-index: 3; }
+.acc-img.was-active { clip-path: inset(0% 0% 0% 0%); transform: scale(1); z-index: 2; }
+.accordion-item { position: relative; }
+.acc-progress {
+  position: absolute; left: 0; top: -1px; height: 1px; width: 0%;
+  background: var(--color-brown);
+}
+.tb-mask, .h-mask { overflow: hidden; }
 .accordion-main { flex: 1; padding-top: 1rem; }
 .accordion-eyebrow { color: var(--color-brown); opacity: 0.65; margin-bottom: 2rem; }
 .accordion-item { border-top: 1px solid var(--color-brown-20); }
@@ -661,6 +669,10 @@ html.loader-done .preloader { opacity: 0; visibility: hidden; pointer-events: no
     margin-left: 1rem; vertical-align: middle;
   }
   .info-card_img { aspect-ratio: 16 / 10; height: auto; }
+  /* mobile collections row: no Swiper — widths replicate its measured
+     geometry (slidesPerView 1.15, 16px gap); the row is scrub-driven in JS */
+  .info-swiper .swiper-wrapper { gap: 16px; }
+  .info-swiper .swiper-slide { flex: 0 0 calc((100% - 2.4px) / 1.15); height: auto; }
   .top-block { padding: 2.5rem 1.25rem 1.5rem; margin-top: 0; }
   .video-block { height: 100vh; height: 100dvh; overflow: hidden; background-color: var(--color-brown); }
   .video-info { max-width: calc(100% - 2.5rem); left: 1.25rem; right: auto; }
