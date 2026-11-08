@@ -47,6 +47,8 @@
   /* ---------- GSAP setup ---------- */
   var smoother = null;
   var heroIntroStarted = false;
+  var accordionActivate = null;
+  var infoSwiperMobile = null;
 
   function startHeroIntro() {
     if (heroIntroStarted) return;
@@ -99,6 +101,86 @@
       });
     });
 
+    /* Pinned scenes (desktop) — scroll lengths measured from the reference:
+       text-blocks +1800, video-block +2160, accordion +720, cta +2250 */
+    var mm = gsap.matchMedia();
+    mm.add("(min-width: 769px)", function () {
+      /* Text blocks: two statements crossfade over a pinned photo scene */
+      var ttl = gsap.timeline({
+        scrollTrigger: { trigger: ".text-blocks", start: "top top", end: "+=900", pin: true, scrub: 1 }
+      });
+      ttl.fromTo(".text-block--1 .text-block_bg", { yPercent: -12 }, { yPercent: 0, duration: 1, ease: "none" }, 0)
+         .fromTo(".text-block--2 .text-block_bg", { yPercent: -12 }, { yPercent: 0, duration: 1, ease: "none" }, 0)
+         .to(".text-block--1", { opacity: 0, duration: 0.22, ease: "power1.inOut" }, 0.52)
+         .fromTo(".text-block--2", { opacity: 0 }, { opacity: 1, duration: 0.22, ease: "power1.inOut" }, 0.52);
+
+      /* Info blocks: left column pinned while the collection stack scrolls */
+      ScrollTrigger.create({
+        trigger: ".info-blocks", start: "top top", end: "bottom bottom",
+        pin: ".info-inner-left", pinSpacing: false
+      });
+
+      /* Video block: pinned film scene */
+      ScrollTrigger.create({
+        trigger: ".video-block", start: "top top", end: "+=2160", pin: true
+      });
+
+      /* Accordion: pinned, activation follows scroll progress */
+      ScrollTrigger.create({
+        trigger: ".accordion-section", start: "top top", end: "+=720", pin: true,
+        onUpdate: function (self) {
+          if (accordionActivate) {
+            accordionActivate(Math.min(4, Math.floor(self.progress * 5)));
+          }
+        }
+      });
+
+      /* CTA: the two lines slide in from opposite sides while pinned */
+      var ctl = gsap.timeline({
+        scrollTrigger: { trigger: ".cta-container", start: "top top", end: "+=2250", pin: true, scrub: 1 }
+      });
+      ctl.from(".cta-line--left", { x: -90, opacity: 0, duration: 0.35, ease: "power2.out" }, 0)
+         .from(".cta-line--right", { x: 90, opacity: 0, duration: 0.35, ease: "power2.out" }, 0)
+         .from(".cta-eyebrow", { opacity: 0, duration: 0.2 }, 0.3)
+         .from(".cta-card", { y: 70, opacity: 0, duration: 0.3, ease: "power2.out" }, 0.35);
+    });
+
+    /* Pinned scenes (mobile) — scroll lengths measured from the reference
+       at 390px: text-blocks +844, video-block +2786, cta +1688 */
+    mm.add("(max-width: 768px)", function () {
+      var mtl = gsap.timeline({
+        scrollTrigger: { trigger: ".text-blocks", start: "top top", end: "+=844", pin: true, scrub: 1 }
+      });
+      mtl.fromTo(".text-block--1 .text-block_bg", { yPercent: -12 }, { yPercent: 0, duration: 1, ease: "none" }, 0)
+         .fromTo(".text-block--2 .text-block_bg", { yPercent: -12 }, { yPercent: 0, duration: 1, ease: "none" }, 0)
+         .to(".text-block--1", { opacity: 0, duration: 0.22, ease: "power1.inOut" }, 0.52)
+         .fromTo(".text-block--2", { opacity: 0 }, { opacity: 1, duration: 0.22, ease: "power1.inOut" }, 0.52);
+
+      /* Info blocks: section pinned, vertical scroll drives the horizontal
+         swiper (reference mobile behaviour; pin distance measured) */
+      ScrollTrigger.create({
+        trigger: ".info-blocks", start: "top top", end: "+=2330", pin: true,
+        onUpdate: function (self) {
+          if (infoSwiperMobile) {
+            var idx = Math.min(6, Math.round(self.progress * 6));
+            if (infoSwiperMobile.activeIndex !== idx) infoSwiperMobile.slideTo(idx);
+          }
+        }
+      });
+
+      ScrollTrigger.create({
+        trigger: ".video-block", start: "top top", end: "+=2786", pin: true
+      });
+
+      var mctl = gsap.timeline({
+        scrollTrigger: { trigger: ".cta-container", start: "top top", end: "+=1688", pin: true, scrub: 1 }
+      });
+      mctl.from(".cta-line--left", { x: -60, opacity: 0, duration: 0.35, ease: "power2.out" }, 0)
+          .from(".cta-line--right", { x: 60, opacity: 0, duration: 0.35, ease: "power2.out" }, 0)
+          .from(".cta-eyebrow", { opacity: 0, duration: 0.2 }, 0.3)
+          .from(".cta-card", { y: 50, opacity: 0, duration: 0.3, ease: "power2.out" }, 0.35);
+    });
+
     /* Ken Burns film: two stills crossfading with a slow push-in */
     var kb1 = document.querySelector(".kb-1");
     var kb2 = document.querySelector(".kb-2");
@@ -112,29 +194,39 @@
   }
 
   /* ---------- Sliders ---------- */
+  function setCollectionIndex(i) {
+    var nowEl = document.getElementById("collectionNow");
+    var bars = document.querySelectorAll("#collectionBars .pagination-bar");
+    if (nowEl) nowEl.textContent = ("0" + (i + 1)).slice(-2);
+    bars.forEach(function (b, bi) { b.classList.toggle("active", bi <= i); });
+  }
+
   function initSliders() {
     if (!window.Swiper) return;
 
-    var nowEl = document.getElementById("collectionNow");
-    var bars = document.querySelectorAll("#collectionBars .pagination-bar");
-    var infoSwiper = new Swiper(".info-swiper", {
-      slidesPerView: 1.15,
-      spaceBetween: 16,
-      speed: 650,
-      grabCursor: true,
-      breakpoints: {
-        768: { slidesPerView: 2, spaceBetween: 24 },
-        1024: { slidesPerView: 3, spaceBetween: 24 },
-        1440: { slidesPerView: 3.4, spaceBetween: 24 }
-      },
-      on: {
-        slideChange: function () {
-          var i = this.activeIndex;
-          if (nowEl) nowEl.textContent = ("0" + (i + 1)).slice(-2);
-          bars.forEach(function (b, bi) { b.classList.toggle("active", bi <= i); });
-        }
+    /* Collections: desktop = scroll-driven stack (counter follows the card
+       passing centre); mobile = horizontal Swiper. */
+    if (window.innerWidth >= 769) {
+      if (window.gsap && window.ScrollTrigger) {
+        document.querySelectorAll(".info-card").forEach(function (card, i) {
+          ScrollTrigger.create({
+            trigger: card, start: "top center", end: "bottom center",
+            onToggle: function (self) { if (self.isActive) setCollectionIndex(i); }
+          });
+        });
       }
-    });
+    } else {
+      infoSwiperMobile = new Swiper(".info-swiper", {
+        slidesPerView: 1.15,
+        spaceBetween: 16,
+        speed: 650,
+        grabCursor: true,
+        allowTouchMove: false,
+        on: {
+          slideChange: function () { setCollectionIndex(this.activeIndex); }
+        }
+      });
+    }
 
     var testiSwiper = new Swiper(".testimonials-swiper", {
       slidesPerView: 1,
@@ -146,7 +238,6 @@
     });
     var nextBtn = document.getElementById("testimonialNext");
     if (nextBtn) nextBtn.addEventListener("click", function () { testiSwiper.slideNext(); });
-    return infoSwiper;
   }
 
   /* ---------- Accordion ---------- */
@@ -173,6 +264,7 @@
       images.forEach(function (img, i) { img.classList.toggle("is-active", i === index); });
     }
 
+    accordionActivate = activate;
     items.forEach(function (item, i) {
       var head = item.querySelector(".accordion-head");
       if (head) head.addEventListener("click", function () { activate(i); });
@@ -245,8 +337,13 @@
       }
       var acc = document.getElementById("cookieAccept");
       var dec = document.getElementById("cookieDecline");
+      var man = document.getElementById("cookieManage");
       if (acc) acc.addEventListener("click", function () { settle("accepted"); });
       if (dec) dec.addEventListener("click", function () { settle("declined"); });
+      if (man) man.addEventListener("click", function () {
+        var note = document.getElementById("cookieNote");
+        if (note) note.hidden = !note.hidden;
+      });
     }
   }
 
