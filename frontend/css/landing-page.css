@@ -3,14 +3,14 @@
    Deep maroon silk · zari gold · warm cream. Nothing else.
    Type floor: body ≥16px, labels ≥13px, everything else ≥14px.
    ============================================================ */
-@font-face{font-family:'Fraunces';src:url('../assets/fonts/Fraunces-500.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
-@font-face{font-family:'Fraunces';src:url('../assets/fonts/Fraunces-600.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
-@font-face{font-family:'Fraunces';src:url('../assets/fonts/Fraunces-700.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:'Fraunces';src:url('../assets/fonts/Fraunces-500Italic.woff2') format('woff2');font-weight:500;font-style:italic;font-display:swap}
-@font-face{font-family:'Fraunces';src:url('../assets/fonts/Fraunces-600Italic.woff2') format('woff2');font-weight:600;font-style:italic;font-display:swap}
-@font-face{font-family:'Archivo';src:url('../assets/fonts/Archivo-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:'Archivo';src:url('../assets/fonts/Archivo-500.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
-@font-face{font-family:'Archivo';src:url('../assets/fonts/Archivo-600.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'Fraunces';src:url('../../assets/fonts/Fraunces-500.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:'Fraunces';src:url('../../assets/fonts/Fraunces-600.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'Fraunces';src:url('../../assets/fonts/Fraunces-700.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:'Fraunces';src:url('../../assets/fonts/Fraunces-500Italic.woff2') format('woff2');font-weight:500;font-style:italic;font-display:swap}
+@font-face{font-family:'Fraunces';src:url('../../assets/fonts/Fraunces-600Italic.woff2') format('woff2');font-weight:600;font-style:italic;font-display:swap}
+@font-face{font-family:'Archivo';src:url('../../assets/fonts/Archivo-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Archivo';src:url('../../assets/fonts/Archivo-500.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:'Archivo';src:url('../../assets/fonts/Archivo-600.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
 
 :root{
   --maroon:#4A0E12;
@@ -232,7 +232,7 @@ a{color:inherit}
 }
 .reviews::before{
   content:"";position:absolute;inset:0;opacity:.10;
-  background:url('../assets/img/kalamkari.jpg') center/cover no-repeat;
+  background:url('../../assets/images/kalamkari.jpg') center/cover no-repeat;
 }
 .reviews .section-head,.reviews .review-grid{position:relative;z-index:1}
 .section-lede-light{color:#EFE0C6}
